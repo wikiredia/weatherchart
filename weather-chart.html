@@ -1,0 +1,355 @@
+<title>Antwerp Area Weather Watch</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --surface:        #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --rain:           #2a78d6;
+    --temp:           #eda100;
+    --uv:             #e34948;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface:        #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --rain:           #3987e5;
+      --temp:           #c98500;
+      --uv:             #e66767;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface:        #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --rain:           #3987e5;
+    --temp:           #c98500;
+    --uv:             #e66767;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  #root { padding: 28px 20px 40px; max-width: 900px; margin: 0 auto; }
+
+  .header { margin-bottom: 18px; }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 6px;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .key {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 18px 0 22px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .key-item { display: flex; align-items: center; gap: 7px; }
+  .key-item .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px 8px;
+    margin-bottom: 20px;
+  }
+  .card-head { margin-bottom: 4px; }
+  .card-head h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 2px;
+    letter-spacing: -0.005em;
+  }
+  .card-head p {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 280px;
+  }
+
+  .foot-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 10px 2px 0;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 560px) {
+    .chart-wrap { height: 250px; }
+    h1 { font-size: 20px; }
+  }
+</style>
+
+<div id="root"></div>
+
+<script>
+const { useEffect, useRef } = React;
+const h = React.createElement;
+
+const DATA = {"labels": ["2026-09-08T23:00", "2026-09-09T00:00", "2026-09-09T01:00", "2026-09-09T02:00", "2026-09-09T03:00", "2026-09-09T04:00", "2026-09-09T05:00", "2026-09-09T06:00", "2026-09-09T07:00", "2026-09-09T08:00", "2026-09-09T09:00", "2026-09-09T10:00", "2026-09-09T11:00", "2026-09-09T12:00", "2026-09-09T13:00", "2026-09-09T14:00", "2026-09-09T15:00", "2026-09-09T16:00", "2026-09-09T17:00", "2026-09-09T18:00", "2026-09-09T19:00", "2026-09-09T20:00", "2026-09-09T21:00", "2026-09-09T22:00"], "locations": [{"name": "Antwerpen", "temp": [16.4, 15.7, 15.0, 14.5, 14.4, 14.2, 13.6, 13.7, 13.1, 13.2, 14.0, 14.7, 16.2, 16.7, 17.5, 18.4, 19.0, 17.3, 16.2, 17.3, 17.2, 16.2, 15.9, 15.1], "precip": [0.0, 0.0, 0.0, 0.1, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.7, 0.4, 0.0, 0.0, 0.0, 0.0], "uv": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.75, 1.7, 0.75, 3.75, 3.55, 3.05, 2.75, 2.45, 1.25, 1.45, 0.55, 0.25, 0.0, 0.0]}, {"name": "Sint-Job-in-'t-Goor", "temp": [16.3, 15.2, 14.7, 13.9, 13.6, 13.8, 13.2, 13.1, 12.8, 12.8, 13.8, 15.1, 16.0, 16.3, 16.4, 17.2, 18.3, 16.1, 15.3, 15.3, 16.1, 15.6, 15.2, 14.9], "precip": [0.0, 0.0, 0.0, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 2.5, 0.0, 0.0, 0.0, 0.0, 0.1], "uv": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.75, 1.7, 0.85, 3.75, 3.3, 2.95, 3.0, 2.35, 1.25, 1.15, 0.55, 0.25, 0.0, 0.0]}, {"name": "Brasschaat", "temp": [16.1, 15.1, 14.4, 13.7, 13.5, 13.7, 13.0, 13.2, 12.5, 12.7, 13.7, 15.1, 15.8, 16.6, 16.4, 17.3, 18.2, 16.0, 14.9, 14.8, 16.0, 15.2, 15.1, 14.8], "precip": [0.0, 0.0, 0.2, 0.1, 0.5, 0.1, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.3, 0.8, 0.6, 0.0, 0.0, 0.0, 0.0], "uv": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.75, 1.7, 0.75, 3.75, 3.55, 3.05, 2.75, 2.45, 1.25, 1.45, 0.55, 0.25, 0.0, 0.0]}]};
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function formatAMPM(iso, prevIso) {
+  const d = new Date(iso);
+  let hour = d.getHours();
+  const suffix = hour >= 12 ? "p" : "a";
+  let hour12 = hour % 12;
+  if (hour12 === 0) hour12 = 12;
+  const label = hour12 + suffix;
+  if (prevIso) {
+    const prevDate = new Date(prevIso).getDate();
+    if (d.getDate() !== prevDate) {
+      const dateLabel = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      return [label, dateLabel];
+    }
+  }
+  return label;
+}
+
+function LocationChart({ loc, labels }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    const textMuted = cssVar("--text-muted");
+    const grid = cssVar("--grid");
+    const surface = cssVar("--surface");
+    const rain = cssVar("--rain");
+    const temp = cssVar("--temp");
+    const uv = cssVar("--uv");
+
+    const ctx = canvasRef.current.getContext("2d");
+    chartRef.current = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Temperature (°C)",
+            data: loc.temp,
+            borderColor: temp,
+            backgroundColor: temp,
+            yAxisID: "yTemp",
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBorderWidth: 2,
+            pointHoverBorderColor: surface,
+            tension: 0.3,
+          },
+          {
+            label: "Rain (mm)",
+            data: loc.precip,
+            borderColor: rain,
+            backgroundColor: rain,
+            yAxisID: "yRain",
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBorderWidth: 2,
+            pointHoverBorderColor: surface,
+            tension: 0.3,
+          },
+          {
+            label: "UV Index",
+            data: loc.uv,
+            borderColor: uv,
+            backgroundColor: uv,
+            yAxisID: "yUV",
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBorderWidth: 2,
+            pointHoverBorderColor: surface,
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: {
+            display: true,
+            position: "top",
+            align: "end",
+            labels: {
+              color: cssVar("--text-secondary"),
+              usePointStyle: true,
+              pointStyle: "line",
+              boxWidth: 20,
+              font: { size: 12 },
+            },
+          },
+          tooltip: {
+            backgroundColor: surface,
+            titleColor: cssVar("--text-primary"),
+            bodyColor: cssVar("--text-primary"),
+            borderColor: grid,
+            borderWidth: 1,
+            padding: 10,
+            titleFont: { weight: "600" },
+            callbacks: {
+              title: (items) => {
+                const d = new Date(labels[items[0].dataIndex]);
+                return d.toLocaleString("en-GB", {
+                  weekday: "short", day: "numeric", month: "short",
+                  hour: "2-digit", minute: "2-digit",
+                });
+              },
+              label: (item) => {
+                const units = { yTemp: "°C", yRain: " mm", yUV: "" };
+                return item.dataset.label + ": " + item.formattedValue + units[item.dataset.yAxisID];
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            border: { color: cssVar("--baseline") },
+            ticks: {
+              color: textMuted,
+              font: { size: 11 },
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 8,
+              callback: function (value, index) {
+                const iso = labels[index];
+                const prevIso = index > 0 ? labels[index - 1] : null;
+                return formatAMPM(iso, prevIso);
+              },
+            },
+          },
+          yTemp: {
+            position: "left",
+            grid: { color: grid, drawTicks: false },
+            border: { color: temp },
+            ticks: { color: temp, font: { size: 11 }, callback: (v) => v + "°" },
+            title: { display: true, text: "Temp (°C)", color: temp, font: { size: 11, weight: "600" } },
+          },
+          yRain: {
+            position: "right",
+            min: 0,
+            suggestedMax: 3,
+            grid: { display: false },
+            border: { color: rain },
+            ticks: { color: rain, font: { size: 11 }, callback: (v) => v + "mm" },
+            title: { display: true, text: "Rain (mm)", color: rain, font: { size: 11, weight: "600" } },
+          },
+          yUV: {
+            position: "right",
+            min: 0,
+            max: 11,
+            grid: { display: false },
+            border: { color: uv },
+            ticks: { color: uv, font: { size: 11 }, stepSize: 5 },
+            title: { display: true, text: "UV Index", color: uv, font: { size: 11, weight: "600" } },
+          },
+        },
+      },
+    });
+
+    return () => chartRef.current && chartRef.current.destroy();
+  }, []);
+
+  return h("div", { className: "card" },
+    h("div", { className: "card-head" },
+      h("h2", null, loc.name),
+      h("p", null, "Hourly forecast — rain, temperature, UV index")
+    ),
+    h("div", { className: "chart-wrap" }, h("canvas", { ref: canvasRef }))
+  );
+}
+
+function Key() {
+  return h("div", { className: "key" },
+    h("div", { className: "key-item" }, h("span", { className: "dot", style: { background: "var(--rain)" } }), h("span", null, "Rain (mm)")),
+    h("div", { className: "key-item" }, h("span", { className: "dot", style: { background: "var(--temp)" } }), h("span", null, "Temperature (°C)")),
+    h("div", { className: "key-item" }, h("span", { className: "dot", style: { background: "var(--uv)" } }), h("span", null, "UV Index"))
+  );
+}
+
+function App() {
+  const start = new Date(DATA.labels[0]);
+  const end = new Date(DATA.labels[DATA.labels.length - 1]);
+  const fmt = (d) => d.toLocaleString("en-GB", {
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+  });
+
+  return h("div", null,
+    h("div", { className: "header" },
+      h("p", { className: "eyebrow" }, "Open-Meteo · Hourly forecast"),
+      h("h1", null, "Antwerp Area Weather Watch"),
+      h("p", { className: "subtitle" },
+        "Rain, temperature, and UV index, one chart per location. " +
+        "Window: " + fmt(start) + " → " + fmt(end) + " (Europe/Brussels)."
+      )
+    ),
+    h(Key, null),
+    DATA.locations.map((loc) => h(LocationChart, { key: loc.name, loc, labels: DATA.labels })),
+    h("p", { className: "foot-note" },
+      "Source: Open-Meteo hourly forecast API. Coordinates — Antwerpen 51.22°N 4.40°E, Sint-Job-in-'t-Goor 51.30°N 4.57°E, Brasschaat 51.29°N 4.49°E. Times shown in Europe/Brussels (CEST, UTC+2). X-axis: a = AM, p = PM."
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(h(App, null));
+</script>
